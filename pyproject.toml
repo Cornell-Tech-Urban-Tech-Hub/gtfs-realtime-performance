@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "bus-weather-impacts"
+version = "0.1.0"
+description = "Estimating weather impact on buses"
+authors = ["CanyonFoot <canyon.foot@twosigma.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+pandas = "^2.1.4"
+geopandas = "^0.14.1"
+numpy = "^1.26.3"
+networkx = "^3.2.1"
+osmnx = "^1.8.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
