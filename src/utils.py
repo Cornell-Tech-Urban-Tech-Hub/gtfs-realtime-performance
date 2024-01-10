@@ -7,6 +7,7 @@ import os
 import geopandas as gpd
 import numpy as np
 import tarfile
+import traceback
 
 def read_parquet_from_tar_gz(url):
     """
@@ -34,12 +35,13 @@ def read_parquet_from_tar_gz(url):
 
         # Read all Parquet files in the temp directory into DataFrames
         df_list = []
+        
         for root, dirs, files in os.walk(temp_dir):
             for file in files:
                 try: 
                     file_path = os.path.join(root, file)
                     df_list.append(pd.read_parquet(file_path))
-                except:
+                except:  # Catch the exception
                     continue
 
         # Concatenate all DataFrames
