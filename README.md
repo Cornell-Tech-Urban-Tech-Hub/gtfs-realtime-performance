@@ -23,7 +23,7 @@ We have also included a number of utility functions to simplify the process of w
   - **[`s3.py`](src/s3.py)**: Contains functions for interacting with AWS S3.
   - **[`speeds.py`](src/speeds.py)**: Contains the [`BusSpeedCalculator`](src/speeds.py) class for calculating bus speeds along segments.
   - **[`utils.py`](src/utils.py)**: Contains utility functions used throughout the project.
-- **`env`**: Put your Mobility Database refresh token here under REFRESH_TOKEN
+- **`.env`**: Put your Mobility Database refresh token here under REFRESH_TOKEN
 
 ### Installation
 
