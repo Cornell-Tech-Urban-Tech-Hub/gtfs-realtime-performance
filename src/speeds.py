@@ -41,8 +41,8 @@ class BusSpeedCalculator:
         buses = gpd.GeoDataFrame(
             buses,
             geometry=gpd.points_from_xy(
-                buses["vehicle.position.longitude"],
-                buses["vehicle.position.latitude"]
+                buses["position.longitude"],
+                buses["position.latitude"]
             ),
             crs=self.in_crs
         ).drop("id", axis = 1)
@@ -184,7 +184,7 @@ class BusSpeedCalculator:
                 continue
             trip_df = trip_df.sort_values(by="timestamp")
             trip_df = self._longest_increasing_subsequence(trip_df)
-            trip_df["epoch_timestamp"] = trip_df["timestamp"].astype(int) // 10**9
+            trip_df["epoch_timestamp"] = trip_df["timestamp"].astype(int)
 
             shape_id = trip_df["shape_id"].iloc[0]
             trip_segments = self.GTFS_segments[self.GTFS_segments["shape_id"] == shape_id].copy()
@@ -211,7 +211,6 @@ class BusSpeedCalculator:
             ).dropna()
 
             trip_speeds[trip_id] = trip_segments
-
         if trip_speeds:
             return pd.concat(trip_speeds.values(), ignore_index=True)
         else:

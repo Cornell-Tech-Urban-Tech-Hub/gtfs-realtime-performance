@@ -1,5 +1,4 @@
 import os 
-os.chdir("/home/canyon/Bus-Weather-Impacts")
 from src.utils import *
 import pandas as pd
 import numpy as np

@@ -2,8 +2,12 @@ import requests
 import zipfile
 import io
 import pandas as pd
+from dotenv import load_dotenv
+import os
+load_dotenv()
+REFRESH_TOKEN = os.getenv("REFRESH_TOKEN")
 
-def get_access_token(refresh_token):
+def get_access_token(refresh_token = REFRESH_TOKEN):
     url = "https://api.mobilitydatabase.org/v1/tokens"
     headers = {
         "Content-Type": "application/json"

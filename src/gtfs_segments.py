@@ -1,7 +1,6 @@
 import os 
 import pandas as pd
 import os
-os.chdir("/home/canyon/Bus-Weather-Impacts")
 import numpy as np
 import geopandas as gpd
 import numpy as np
