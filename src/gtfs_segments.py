@@ -33,6 +33,8 @@ class GTFS_shape_processor:
     def _prep_shapes(self, shapes):
         """
         Prepare shapes by grouping them into LineStrings based on shape_id.
+        Each record in shapes.txt represents a shape point used to define the shape.
+        Therefore, this function takes in a group of shape points and returns a LineString.
         
         Parameters:
         - shapes: The 'shapes.txt' data from the GTFS file.

@@ -16,8 +16,8 @@ class BusSpeedCalculator:
         Initialize the BusSpeedCalculator.
 
         Parameters:
-        GTFS_rt_df (pd.DataFrame): The real-time GTFS data as a pandas DataFrame.
-        GTFS_dict (dict): A dictionary containing GTFS data files as DataFrames.
+        GTFS_rt_df (pd.DataFrame): The real-time GTFS data (vehicle positions) as a pandas DataFrame.
+        GTFS_dict (dict): A dictionary containing GTFS data (a static feed for a route) files as DataFrames.
         GTFS_segments (gpd.GeoDataFrame): GeoDataFrame of GTFS segments with geometries.
         in_crs (int): Input Coordinate Reference System (CRS) code. Default is 4326.
         out_crs (int): Output CRS code. Default is 2263.
@@ -215,3 +215,22 @@ class BusSpeedCalculator:
             return pd.concat(trip_speeds.values(), ignore_index=True)
         else:
             return pd.DataFrame()
+
+    def match_trip_with_route(self, trip_speeds):
+        """
+        Match trip_id with route_id
+        """
+        trip_speeds = trip_speeds.merge(
+            self.GTFS_dict['trips.txt'][['trip_id', 'route_id']],
+            on='trip_id',
+            how='left'
+        )
+        return trip_speeds
+    
+    def process_time(self, trip_speeds):
+        """
+        Process time to get hour, day, month, year, weekday, etc
+        """
+        trip_speeds["hour"] = trip_speeds["interpolated_time"].dt.hour
+        trip_speeds["weekday"] = trip_speeds["interpolated_time"].dt.weekday
+        return trip_speeds
