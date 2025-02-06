@@ -218,7 +218,13 @@ class BusSpeedCalculator:
 
     def match_trip_with_route(self, trip_speeds):
         """
-        Match trip_id with route_id
+        Match trip_id with route_id based on trips.txt in static feed
+
+        Parameters:
+        trip_speeds (pd.DataFrame): DataFrame containing trip speeds.
+
+        Returns:
+        pd.DataFrame: DataFrame with matched route_id.
         """
         trip_speeds = trip_speeds.merge(
             self.GTFS_dict['trips.txt'][['trip_id', 'route_id']],
@@ -230,6 +236,12 @@ class BusSpeedCalculator:
     def process_time(self, trip_speeds):
         """
         Process time to get hour, day, month, year, weekday, etc
+
+        Parameters:
+        trip_speeds (pd.DataFrame): DataFrame containing trip speeds.
+
+        Returns:
+        pd.DataFrame: DataFrame with processed time columns.    
         """
         trip_speeds["hour"] = trip_speeds["interpolated_time"].dt.hour
         trip_speeds["weekday"] = trip_speeds["interpolated_time"].dt.weekday
