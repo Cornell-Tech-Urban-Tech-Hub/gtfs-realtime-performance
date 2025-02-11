@@ -65,6 +65,7 @@ class BusSpeedCalculator:
         )
 
         # Merge with 'trips.txt' to get 'shape_id'
+        # Inner: Only rows where trip_id exists in both buses and trips.txt will be kept.
         buses = buses.merge(
             self.GTFS_dict['trips.txt'][["trip_id", "shape_id"]].drop_duplicates(),
             on='trip_id',
