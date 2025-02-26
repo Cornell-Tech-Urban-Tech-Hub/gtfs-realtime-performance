@@ -52,6 +52,6 @@ def parse_zipped_gtfs(url):
             with zip_file.open(file_name) as csv_file:
                 df = pd.read_csv(csv_file)
                 dataframes[file_name] = df
-    print("Parsed GTFS static feed data successfully")
+    print("Parsed GTFS static feed data successfully, length: ", len(dataframes))
 
     return dataframes
