@@ -84,6 +84,7 @@ class GTFS_shape_processor:
 
         Returns:
         - A dictionary containing the distance to the line and the projected position along the line.
+        - The projected position is the distance along the line from the start of the line to the projected point.
         """
         out = {}
         try:
