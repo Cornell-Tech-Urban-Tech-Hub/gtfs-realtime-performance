@@ -27,10 +27,14 @@ For context, when an app is already running (hasn't gone to sleep yet), page loa
 # DB?
 1. bus speed table(one large table?)
 2. geojson data
-3. GTFS static data -> segment -> for map visualization
-4. what else?
+3. GTFS static data: date -> GTFS dict -> segment df
 
 # Realtime data ingestion and processing
 Similar to how they set up the scraper, we need sth like that for bus speed data ETL to the db.
+
+
+# toso
+- visualization: rush hour
+- batch processing: 1. parquet format? 2. set up docker for backend running?
 
 
