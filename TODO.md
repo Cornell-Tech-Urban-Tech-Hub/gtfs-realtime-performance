@@ -33,8 +33,68 @@ For context, when an app is already running (hasn't gone to sleep yet), page loa
 Similar to how they set up the scraper, we need sth like that for bus speed data ETL to the db.
 
 
-# toso
+# TODO
 - visualization: rush hour
-- batch processing: 1. parquet format? 2. set up docker for backend running?
+- batch processing steps:
 
 
+# Discussion
+1. local: parquet format? - yes
+- schema metadata: has column names, data types, ... Stored at the file level and shared across all row groups
+- Apache Spark can read parquet and write to postgres SQL
+- AWS Glue ETL can read parquet from s3 and load directly to RDS
+
+2. what cols should be in parquet file - done 
+precomputing the weekday col during etl for faster query: weekday (0-6)
+precomputing the hour col during etl for faster query: hour (0-23)
+
+3. batch processing with pyspark? - in progress
+- todo: to ood
+- todo: test on sample data set
+
+________________________________________
+
+
+
+
+
+
+4. db schema design
+url -> date range -> 
+- GTFS dict -> json
+- segment -> geojson
+- daily speeds -> parquet? a table?
+
+query senario: filter by weekday and route
+
+
+
+
+
+5. pipeline design
+- s3 -> daily parquet -> load into db
+- s3 -> processing -> into db
+
+
+
+6. set up docker for isolation and logging
+
+# routes * # hours * # segments 
+# 50mb
+# streamlit application -> table -> parquet is fine
+# don't have to a continous project
+
+# all the aggregation before loading into 
+
+
+drop all the routes 
+
+only use the url we need 
+
+
+
+
+
+
+table 
+row -> speeds -> 

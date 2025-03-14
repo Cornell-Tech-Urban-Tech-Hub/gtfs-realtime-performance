@@ -90,3 +90,6 @@ target/
 
 # data folder
 data/
+
+# logs
+logs/
