@@ -47,7 +47,9 @@ Processed:
 - all the aggregation before loading into 
 
 
-1. notebook for experiment
-2. oop py runner
-3. spark for nested loop?
-4. docker
+1. oop py runner for speed calculation
+- with loggers
+2. docker
+
+
+todo: spark for nested loop - skipped 
