@@ -3,7 +3,7 @@ import re
 from typing import List, Optional
 import boto3
 import pandas as pd
-
+from concurrent.futures import ThreadPoolExecutor, as_completed
 def get_s3_client():
     """
     Returns a boto3 S3 client using standard AWS credentials configuration.
@@ -129,3 +129,23 @@ def delete_file_in_s3(bucket_name: str, s3_key: str) -> None:
     """
     s3_client = get_s3_client()
     s3_client.delete_object(Bucket=bucket_name, Key=s3_key)
+
+
+def load_all_parquet_files(file_list: List[str], bucket: str, max_workers: int = 100) -> pd.DataFrame:
+    """
+    Load all parquet files from a list of file paths in an S3 bucket.
+
+    :param file_list: List of file paths in the S3 bucket.
+    :param bucket: Name of the S3 bucket.
+    :param max_workers: Maximum number of worker threads to use.
+    """
+    dfs = []
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [executor.submit(read_parquet_from_s3, bucket, key) for key in file_list]
+        for future in as_completed(futures):
+            try:
+                dfs.append(future.result())
+            except Exception as e:
+                print(f"Error reading a file: {e}")
+    print(f"Read {len(dfs)} parquet files from s3")
+    return pd.concat(dfs, ignore_index=True)

@@ -30,9 +30,11 @@ Raw:
 Processed:
 - data
     - table-chart
-        - chart.parquet (speed by time)
+        - before_chart.parquet (speed by time)
+        - after_chart.parquet (speed by time)
     - table-map
-        - map.parquet (speed by segment)
+        - before_map.parquet (speed by segment)
+        - after_map.parquet (speed by segment)
         - segments.parquet
 
 
@@ -45,10 +47,7 @@ Processed:
 - all the aggregation before loading into 
 
 
-
-
-
-
-
-table 
-row -> speeds -> 
+1. notebook for experiment
+2. oop py runner
+3. spark for nested loop?
+4. docker
