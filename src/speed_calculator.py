@@ -28,6 +28,8 @@ class SpeedCalculator:
 
         # First check if data already exists
         output_path = f"data/raw-speeds/{self.feed_id}/bus_speeds_{date}.parquet"
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        
         if os.path.exists(output_path):
             self.logger.info(f"Data already exists for {date}, skipping to next date")
             return None
@@ -82,7 +84,6 @@ class SpeedCalculator:
 
     def _process_speeds_df(self, speeds: pd.DataFrame) -> pd.DataFrame:
         """Process the speeds DataFrame - exactly matching notebook logic"""
-
         # Drop cols that are not needed
         speeds.drop(columns=[
             "stop_sequence", "stop_name", "prev_stop_name",

@@ -1,0 +1,7 @@
+pandas
+geopandas
+pytz
+tqdm
+shapely
+boto3
+numpy
