@@ -37,7 +37,8 @@ class BusSpeedCalculator:
         gpd.GeoDataFrame: Prepared buses GeoDataFrame.
         """
         buses = self.buses_raw.copy()
-
+        
+        # Create geometry
         buses = gpd.GeoDataFrame(
             buses,
             geometry=gpd.points_from_xy(
@@ -49,9 +50,16 @@ class BusSpeedCalculator:
 
         buses = buses.to_crs(self.out_crs)
 
+        # Save route_id before column renaming
+        route_id = buses['trip.route_id'].copy()
+
+        # Rename columns
         buses.columns = buses.columns.str.replace("vehicle.", '', regex=False)
         buses.columns = buses.columns.str.replace('trip.', '', regex=False)
         buses.columns = buses.columns.str.replace('position.', '', regex=False)
+
+        # Add back route_id
+        buses['route_id'] = route_id
 
         required_columns = ['trip_id', 'id', 'start_date']
         for col in required_columns:
@@ -65,7 +73,6 @@ class BusSpeedCalculator:
         )
 
         # Merge with 'trips.txt' to get 'shape_id'
-        # Inner: Only rows where trip_id exists in both buses and trips.txt will be kept.
         buses = buses.merge(
             self.GTFS_dict['trips.txt'][["trip_id", "shape_id"]].drop_duplicates(),
             on='trip_id',
@@ -183,6 +190,10 @@ class BusSpeedCalculator:
 
             if trip_df.shape[0] < 10:
                 continue
+            
+            # Get route_id from the first row (it's the same for all rows in a trip)
+            route_id = trip_df['route_id'].iloc[0]
+            
             trip_df = trip_df.sort_values(by="timestamp")
             trip_df = self._longest_increasing_subsequence(trip_df)
             trip_df["epoch_timestamp"] = trip_df["timestamp"].astype(int)
@@ -207,11 +218,15 @@ class BusSpeedCalculator:
                 (trip_segments["segment_length"] / trip_segments["time_elapsed"]) * 0.681818
             )
             trip_segments["unique_trip_id"] = trip_id
+            # Add route_id to trip_segments
+            trip_segments["route_id"] = route_id
+            
             trip_segments = trip_segments.drop("geometry", axis=1).replace(
                 [np.inf, -np.inf], np.nan
             ).dropna()
 
             trip_speeds[trip_id] = trip_segments
+        
         if trip_speeds:
             return pd.concat(trip_speeds.values(), ignore_index=True)
         else:

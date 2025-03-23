@@ -10,6 +10,7 @@ from shapely.geometry import Point, LineString
 import src.api as api
 from shapely.ops import linemerge
 from shapely.ops import substring
+from shapely.errors import ShapelyError
 
 class GTFS_shape_processor:
     """
