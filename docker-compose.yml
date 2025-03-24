@@ -6,9 +6,5 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
-    command: >
-      --start-date 2025-01-07
-      --end-date 2025-01-10
-      --feed-id mdb-513-202501020055
-      --gtfs-url "https://files.mobilitydatabase.org/mdb-513/mdb-513-202501020055/mdb-513-202501020055.zip"
-      --routes M50,M15
+      - ./.env:/app/.env
+    command: ["./process_feeds.sh"]

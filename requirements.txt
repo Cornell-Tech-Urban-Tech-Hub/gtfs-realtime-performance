@@ -1,7 +1,10 @@
 pandas
 geopandas
 pytz
-tqdm
+requests
 shapely
-boto3
+tqdm
+s3fs
 numpy
+boto3
+python-dotenv
