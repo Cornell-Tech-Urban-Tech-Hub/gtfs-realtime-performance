@@ -28,11 +28,11 @@ def main():
     
     # Parse arguments
     parser = argparse.ArgumentParser(description='Calculate bus speeds')
-    parser.add_argument('--start-date', required=True)
-    parser.add_argument('--end-date', required=True)
-    parser.add_argument('--feed-id', required=True)
-    parser.add_argument('--gtfs-url', required=True)
-    parser.add_argument('--routes', required=True)
+    parser.add_argument('--start-date', required=True, help='Start date (YYYY-MM-DD)')
+    parser.add_argument('--end-date', required=True, help='End date (YYYY-MM-DD)')
+    parser.add_argument('--feed-id', required=True, help='Feed ID (e.g., mdb-513)')
+    parser.add_argument('--gtfs-url', required=True, help='GTFS URL')
+    parser.add_argument('--routes', required=True, help='Comma-separated list of route IDs (e.g., M50,M15,B62)')
     args = parser.parse_args()
 
     try:
