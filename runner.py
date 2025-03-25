@@ -34,8 +34,8 @@ def main():
 
     print(f"Starting main with feed_id: {args.feed_id}")  # Debug print
     
-    # Set up logger
-    logger = setup_logger(args.feed_id)
+    # Set up logger (no feed_id needed anymore)
+    logger = setup_logger()
     
     print("Logger setup complete")  # Debug print
 
@@ -66,7 +66,7 @@ def main():
         logger.info(f"Processing dates: {date_list} for routes: {route_list}")
         
         for date in date_list:
-            calculator.process_date(date, route_list)
+            calculator.process_date(date, route_list) 
 
     except Exception as e:
         logger.error(f"Fatal error in main execution: {str(e)}")

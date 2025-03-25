@@ -24,7 +24,5 @@ COPY process_feeds.sh .
 # Make the script executable
 RUN chmod +x process_feeds.sh
 
-# Set the entrypoint to bash
-ENTRYPOINT ["/bin/bash"]
-# Use process_feeds.sh as the default command
+# Command to run the processing script
 CMD ["./process_feeds.sh"]

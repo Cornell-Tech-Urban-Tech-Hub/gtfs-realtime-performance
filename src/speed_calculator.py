@@ -43,21 +43,22 @@ class SpeedCalculator:
         except Exception as e:
             self.logger.error(f"Error loading parquets from s3 for {date}: {e}")
             return None
+        
+       # ! Check if vehicle_positions is empty
+        if vehicle_positions.empty:
+            self.logger.info(f"No vehicle positions found in s3 for {date}. Skipping to next date")
+            return None
 
         # Filter vps by routes in route_list
         vehicle_positions = vehicle_positions[
             vehicle_positions['trip.route_id'].isin(route_list)
         ]
-
-        # Check if vehicle_positions is empty
-        if vehicle_positions.empty:
-            self.logger.error(f"No vehicle positions found for {date}. Check if the feed id and date match. Skipping to next date")
-            return None
         
-        # Check if vehicle_positions has all the routes in route_list and log the missing routes
+        # ! Check if vehicle_positions has all the routes in route_list and log the missing routes
         missing_routes = set(route_list) - set(vehicle_positions['trip.route_id'].unique())
         if missing_routes:
             self.logger.warning(f"Missing routes in vehicle positions for {date}: {missing_routes}")
+
 
         # Calculate speeds
         speed_calculator = BusSpeedCalculator(vehicle_positions, 
@@ -71,7 +72,7 @@ class SpeedCalculator:
 
         # Check if speeds is empty
         if speeds.empty:
-            self.logger.error(f"No speeds found for {date}. Check if the feed id and date match. Skipping to next date")
+            self.logger.error(f"No speeds calculated for {date}. Check if the feed id and date match. Skipping to next date")
             return None
 
         # Process the speeds DataFrame
