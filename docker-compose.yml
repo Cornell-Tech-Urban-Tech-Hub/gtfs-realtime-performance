@@ -1,11 +1,15 @@
-version: '3'
-
 services:
   bus-speed-processor:
     build: .
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          memory: 4G
     env_file:
       - .env
     restart: "no"
