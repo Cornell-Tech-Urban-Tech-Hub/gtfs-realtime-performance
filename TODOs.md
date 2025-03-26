@@ -22,6 +22,8 @@ For context, when an app is already running (hasn't gone to sleep yet), page loa
 M102,M50
 mdb-513 Manhattan
 ```
+        python runner.py         --start-date 2025-01-25         --end-date 2025-02-01         --feed-id mdb-513-202501230024         --gtfs-url "https://files.mobilitydatabase.org/mdb-513/mdb-513-202501230024/mdb-513-202501230024.zip"         --routes M50,M102
+
         python runner.py         --start-date 2024-11-01         --end-date 2024-12-11         --feed-id mdb-513-202409090026         --gtfs-url "https://files.mobilitydatabase.org/mdb-513/mdb-513-202409090026/mdb-513-202409090026.zip"         --routes M50,M102
 ```
 
@@ -32,7 +34,7 @@ SIM24 - staten island, new jersey, manhattan
 SIM4X - staten island, brooklyn, manhattan
 
 ```
-        python runner.py         --start-date 2024-11-01         --end-date 2025-01-04         --feed-id mdb-514-202412120006         --gtfs-url "https://files.mobilitydatabase.org/mdb-514/mdb-514-202412120006/mdb-514-202412120006.zip"         --routes SIM24,SIM4X
+        python runner.py         --start-date 2024-12-12         --end-date 2025-01-04         --feed-id mdb-514-202412120006         --gtfs-url "https://files.mobilitydatabase.org/mdb-514/mdb-514-202412120006/mdb-514-202412120006.zip"         --routes SIM24,SIM4X
         
 
         python runner.py         --start-date 2025-01-05         --end-date 2025-02-09         --feed-id mdb-514-202501020130         --gtfs-url "https://files.mobilitydatabase.org/mdb-514/mdb-514-202501020130/mdb-514-202501020130.zip"         --routes SIM24,SIM4X
@@ -60,17 +62,6 @@ mdb-512 Brooklyn
 
 
 
-1. route_id has problem, why has Q59 in B39 records? ok
-- waiting for confirmation
-- go with route_id for now
-
-2. docker requirement.txt ok
-
-3. segment for each feed ok
-
-4. loggers settings: divide by mdb-id ok
-/logs/{mdb-id}/bus_speeds_20250323.log
-
-5. docker build and test
-docker run 
+2024-11-02 might be too big to fit in RAM -> trouble shooting
+(optional) docker memory allocation and optimization
 (optional) spark for nested loop - skipped - need to learn spark first
