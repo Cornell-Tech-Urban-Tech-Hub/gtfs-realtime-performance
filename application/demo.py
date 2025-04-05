@@ -185,66 +185,38 @@ def toggle_color_blind_mode():
 def toggle_dark_mode():
     st.session_state.dark_mode = not st.session_state.dark_mode
 
-# Generate fake data based on selection
-def generate_fake_data(route, day):
-    # Hours of the day
-    hours = list(range(24))
+def get_speed_data(route, day):
+    # Convert day string to weekday number (0 = Monday, 6 = Sunday)
+    day_to_num = {
+        "Mondays": 0,
+        "Tuesdays": 1,
+        "Wednesdays": 2,
+        "Thursdays": 3,
+        "Fridays": 4,
+        "Saturdays": 5,
+        "Sundays": 6
+    }
+    weekday = day_to_num[day]
     
-    # Base patterns that represent typical traffic patterns
-    morning_peak = [7, 8, 9]  # Morning rush hours
-    evening_peak = [16, 17, 18, 19]  # Evening rush hours
+    # Get route ID from the route data
+    route_id = route_data[route]["id"]
     
-    # Different routes have different base speeds
-    if route_data[route]["is_affected"]:
-        base_speed_before = 18
-        # After congestion pricing, affected routes show improvement
-        base_speed_after = 22
-    else:
-        base_speed_before = 20
-        # Non-affected routes show minimal change
-        base_speed_after = 21
+    # Read both control and treatment speeds data
+    before_data = pd.read_parquet("../data/chart-speeds/control_speeds.parquet")
+    after_data = pd.read_parquet("../data/chart-speeds/treatment_speeds.parquet")
     
-    # Generate speeds for each hour
-    before_speeds = []
-    after_speeds = []
-    speed_differences = []
+    # Filter data for specific route and weekday
+    before_data = before_data[
+        (before_data["route_id"] == route_id) & 
+        (before_data["weekday"] == weekday)
+    ].sort_values("hour")
     
-    for hour in hours:
-        # Add time-of-day variations
-        if hour in morning_peak:
-            factor_before = 0.7  # 30% slower during morning rush
-            factor_after = 0.85  # Less impact after congestion pricing
-        elif hour in evening_peak:
-            factor_before = 0.65  # 35% slower during evening rush
-            factor_after = 0.8   # Less impact after congestion pricing
-        elif 0 <= hour < 6:
-            factor_before = 1.2  # Faster at night
-            factor_after = 1.2   # Still faster at night
-        else:
-            factor_before = 1.0
-            factor_after = 1.0
-        
-        # Add some randomness
-        noise_before = np.random.normal(0, 1)
-        noise_after = np.random.normal(0, 1)
-        
-        # Calculate speeds
-        speed_before = max(5, base_speed_before * factor_before + noise_before)
-        speed_after = max(5, base_speed_after * factor_after + noise_after)
-        
-        # Calculate speed difference
-        speed_diff = speed_after - speed_before
-        
-        before_speeds.append(round(speed_before, 1))
-        after_speeds.append(round(speed_after, 1))
-        speed_differences.append(round(speed_diff, 1))
+    after_data = after_data[
+        (after_data["route_id"] == route_id) & 
+        (after_data["weekday"] == weekday)
+    ].sort_values("hour")
     
-    # Create dataframes
-    before_data = pd.DataFrame({'hour': hours, 'speed': before_speeds})
-    after_data = pd.DataFrame({'hour': hours, 'speed': after_speeds})
-    diff_data = pd.DataFrame({'hour': hours, 'diff': speed_differences})
-    
-    return before_data, after_data, diff_data
+    return before_data, after_data
 
 # Create mapbox figure
 def create_map(route_name, hour, speed_diff):
@@ -330,8 +302,21 @@ with col1:
         refresh = st.button("🔄", help="Refresh data")
     
     # Get data based on selection
-    before_data, after_data, diff_data = generate_fake_data(selected_route, selected_day)
+    before_data, after_data = get_speed_data(selected_route, selected_day)
     
+    # Check data availability
+    has_before_data = len(before_data) > 0
+    has_after_data = len(after_data) > 0
+    
+    if not has_before_data and not has_after_data:
+        st.error(f"No data available for {selected_route} on {selected_day}")
+        st.stop()
+    
+    # Calculate speed difference for the map when needed
+    selected_hour = 8  # Assuming morning rush hour
+    speed_diff = after_data[after_data['hour'] == selected_hour]['average_speed_mph'].values[0] - \
+                before_data[before_data['hour'] == selected_hour]['average_speed_mph'].values[0]
+
     # Choose colors based on color blind mode
     if st.session_state.color_blind_mode:
         before_color = "#0072B2"  # Blue that works well for color blind users
@@ -348,27 +333,38 @@ with col1:
     # Create the plot
     fig = go.Figure()
     
-    # Add traces
-    fig.add_trace(go.Scatter(
-        x=before_data['hour'],
-        y=before_data['speed'],
-        mode='lines',
-        name='Before Jan 5th',
-        line=dict(color=before_color, width=3),
-        fill='tozeroy',
-        fillcolor=f'rgba{tuple(list(int(before_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)) + [0.2])}',
-    ))
+    # Add traces based on data availability
+    if has_before_data:
+        fig.add_trace(go.Scatter(
+            x=before_data['hour'],
+            y=before_data['average_speed_mph'],
+            mode='lines',
+            name='Before Jan 5th',
+            line=dict(color=before_color, width=3),
+            fill='tozeroy',
+            fillcolor=f'rgba{tuple(list(int(before_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)) + [0.2])}',
+        ))
     
-    fig.add_trace(go.Scatter(
-        x=after_data['hour'],
-        y=after_data['speed'],
-        mode='lines',
-        name='Jan 5th and After',
-        line=dict(color=after_color, width=3),
-        fill='tozeroy',
-        fillcolor=f'rgba{tuple(list(int(after_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)) + [0.2])}',
-    ))
+    if has_after_data:
+        fig.add_trace(go.Scatter(
+            x=after_data['hour'],
+            y=after_data['average_speed_mph'],
+            mode='lines',
+            name='Jan 5th and After',
+            line=dict(color=after_color, width=3),
+            fill='tozeroy',
+            fillcolor=f'rgba{tuple(list(int(after_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)) + [0.2])}',
+        ))
     
+    # Calculate speed difference for the map only if both datasets are available
+    if has_before_data and has_after_data:
+        speed_diff = after_data[after_data['hour'] == selected_hour]['average_speed_mph'].values[0] - \
+                    before_data[before_data['hour'] == selected_hour]['average_speed_mph'].values[0]
+    else:
+        # If we don't have both datasets, set speed_diff to 0 (neutral color on map)
+        speed_diff = 0
+        st.warning("Speed difference cannot be calculated - data missing for one of the periods")
+
     # Update layout
     fig.update_layout(
         title=None,
@@ -425,9 +421,6 @@ with col2:
                                      index=0)
     selected_hour = rush_hours[selected_hour_label]
     
-    # Get speed difference for the selected hour
-    speed_diff = diff_data[diff_data['hour'] == selected_hour]['diff'].values[0]
-
     # Create and display the map
     map_fig = create_map(selected_route, selected_hour, speed_diff)
     map_fig.update_layout(
