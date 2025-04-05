@@ -65,3 +65,20 @@ mdb-512 Brooklyn
 2024-11-02 might be too big to fit in RAM -> trouble shooting
 (optional) docker memory allocation and optimization
 (optional) spark for nested loop - skipped - need to learn spark first
+
+
+Route B39: Williamsburg Bridge
+Route SIM24: Lincoln Tunnel
+Route SIM4X: Hugh Carey Tunnel
+Route M102: CBD North/South
+Route M50: CBD East/West
+
+
+rush hour are defined as:
+
+Morning Rush(7AM - 10AM)
+Evening Rush(4PM - 7PM)
+
+
+morning_mask = (speed_data['hour'] >= 7) & (speed_data['hour'] < 10)
+evening_mask = (speed_data['hour'] >= 16) & (speed_data['hour'] < 19)
