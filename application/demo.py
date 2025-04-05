@@ -4,6 +4,7 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime, timedelta
+import geopandas as gpd
 
 # Page configuration
 st.set_page_config(
@@ -218,51 +219,118 @@ def get_speed_data(route, day):
     
     return before_data, after_data
 
-# Create mapbox figure
-def create_map(route_name, hour, speed_diff):
-    # Get route coordinates
-    route_coords = route_data[route_name]["polyline"]
+def get_segment_speed_diff(route_id, weekday, rush_hour):
+    """Get speed differences for route segments"""
+    try:
+        # Read merged speed differences data
+        speeds_data = pd.read_parquet("../data/map-speeds/merged_speeds_diff.parquet")
+        
+        # Filter data for specific route, weekday and rush hour period
+        segments_data = speeds_data[
+            (speeds_data["route_id"] == route_id) & 
+            (speeds_data["weekday"] == weekday) & 
+            (speeds_data["rush_hour"] == rush_hour)
+        ]
+        
+        if segments_data.empty:
+            return None
+            
+        # Read segments geometry
+        segments_geo = gpd.read_file("../data/map-segments/merged_segments.geojson")
+        
+        # Merge speed data with geometry
+        merged_data = segments_data.merge(
+            segments_geo,
+            how='left',
+            left_on=['prev_stop_id', 'stop_id'],
+            right_on=['prev_stop_id', 'stop_id']
+        )
+        
+        return merged_data
+        
+    except FileNotFoundError:
+        st.warning(f"No segment data available for route {route_id}")
+        return None
+
+def create_map(route_name, rush_hour, weekday):
+    """Create map visualization for route segments"""
+    # Get route ID
+    route_id = route_data[route_name]["id"]
     
-    # Create the base map centered on Manhattan
+    # Get segment speed differences with geometry
+    segments_data = get_segment_speed_diff(route_id, weekday, rush_hour)
+    
+    # Create the base map
     fig = go.Figure()
     
-    # Set color based on speed difference
-    if speed_diff > 0:
-        # Positive difference (blue) - faster after congestion pricing
-        color_intensity = min(1, speed_diff / 5)  # Normalize to a max of 5 mph difference
-        color = f'rgb({int(135 * (1-color_intensity))}, {int(206 * (1-color_intensity))}, 255)'
+    if segments_data is not None and not segments_data.empty:
+        # Add each segment as a separate line
+        for _, segment in segments_data.iterrows():
+            speed_diff = segment["avg_speed_diff"]
+            
+            # Extract coordinates from geometry
+            coords = segment['geometry'].coords[:]
+            
+            # Set color based on speed difference
+            if speed_diff > 0:
+                color_intensity = min(1, speed_diff / 5)
+                color = f'rgb({int(135 * (1-color_intensity))}, {int(206 * (1-color_intensity))}, 255)'
+            else:
+                color_intensity = min(1, abs(speed_diff) / 5)
+                color = f'rgb(255, {int(99 * (1-color_intensity))}, {int(71 * (1-color_intensity))})'
+            
+            # Add segment to map
+            fig.add_trace(go.Scattermapbox(
+                mode="lines",
+                lon=[coord[0] for coord in coords],
+                lat=[coord[1] for coord in coords],
+                line=dict(width=6, color=color),
+                name=f"Stop {segment['prev_stop_id']} to {segment['stop_id']}: {speed_diff:+.1f} mph",
+                showlegend=False,
+                hoverinfo="text",
+                hovertext=f"From Stop: {segment['prev_stop_id']}<br>To Stop: {segment['stop_id']}<br>Speed change: {speed_diff:+.1f} mph"
+            ))
+        
+        # Add a colorscale legend
+        fig.add_trace(go.Scattermapbox(
+            mode="markers",
+            lon=[],
+            lat=[],
+            marker=dict(
+                size=10,
+                colorscale=[
+                    [0, 'rgb(255, 71, 71)'],     # Red for negative
+                    [0.5, 'rgb(255, 255, 255)'],  # White for zero
+                    [1, 'rgb(135, 206, 255)']     # Blue for positive
+                ],
+                colorbar=dict(
+                    title="Speed Difference (mph)",
+                    thickness=15,
+                    len=0.5,
+                    x=0.9
+                ),
+                cmin=-5,
+                cmax=5
+            ),
+            showlegend=False
+        ))
+        
     else:
-        # Negative difference (red) - slower after congestion pricing
-        color_intensity = min(1, abs(speed_diff) / 5)
-        color = f'rgb(255, {int(99 * (1-color_intensity))}, {int(71 * (1-color_intensity))})'
-    
-    # Add the route as a polyline
-    lats = [coord[0] for coord in route_coords]
-    lons = [coord[1] for coord in route_coords]
-    
-    fig.add_trace(go.Scattermapbox(
-        mode="lines",
-        lon=lons,
-        lat=lats,
-        line=dict(width=6, color=color),
-        name=f"{route_name} ({speed_diff:+.1f} mph)"
-    ))
+        st.warning("No segment data available for the selected time period")
     
     # Set map layout
     fig.update_layout(
         mapbox=dict(
             style="carto-positron",
             zoom=12,
-            center=dict(lat=40.75, lon=-73.98),  # Center on Manhattan
+            center=dict(lat=40.75, lon=-73.98),  # NYC center
         ),
         margin=dict(l=0, r=0, t=0, b=0),
-        height=600,  # Match the height of the chart
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=0.01,
-            xanchor="center",
-            x=0.5,
+        height=440,
+        hoverlabel=dict(
+            bgcolor="white",
+            font_size=12,
+            font_family="Arial"
         )
     )
     
@@ -304,14 +372,6 @@ with col1:
     # Get data based on selection
     before_data, after_data = get_speed_data(selected_route, selected_day)
     
-    # Check data availability
-    has_before_data = len(before_data) > 0
-    has_after_data = len(after_data) > 0
-    
-    if not has_before_data and not has_after_data:
-        st.error(f"No data available for {selected_route} on {selected_day}")
-        st.stop()
-    
     # Calculate speed difference for the map when needed
     selected_hour = 8  # Assuming morning rush hour
     speed_diff = after_data[after_data['hour'] == selected_hour]['average_speed_mph'].values[0] - \
@@ -333,38 +393,27 @@ with col1:
     # Create the plot
     fig = go.Figure()
     
-    # Add traces based on data availability
-    if has_before_data:
-        fig.add_trace(go.Scatter(
-            x=before_data['hour'],
-            y=before_data['average_speed_mph'],
-            mode='lines',
-            name='Before Jan 5th',
-            line=dict(color=before_color, width=3),
-            fill='tozeroy',
-            fillcolor=f'rgba{tuple(list(int(before_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)) + [0.2])}',
-        ))
+    # Add traces
+    fig.add_trace(go.Scatter(
+        x=before_data['hour'],
+        y=before_data['average_speed_mph'],
+        mode='lines',
+        name='Before Jan 5th',
+        line=dict(color=before_color, width=3),
+        fill='tozeroy',
+        fillcolor=f'rgba{tuple(list(int(before_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)) + [0.2])}',
+    ))
     
-    if has_after_data:
-        fig.add_trace(go.Scatter(
-            x=after_data['hour'],
-            y=after_data['average_speed_mph'],
-            mode='lines',
-            name='Jan 5th and After',
-            line=dict(color=after_color, width=3),
-            fill='tozeroy',
-            fillcolor=f'rgba{tuple(list(int(after_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)) + [0.2])}',
-        ))
+    fig.add_trace(go.Scatter(
+        x=after_data['hour'],
+        y=after_data['average_speed_mph'],
+        mode='lines',
+        name='Jan 5th and After',
+        line=dict(color=after_color, width=3),
+        fill='tozeroy',
+        fillcolor=f'rgba{tuple(list(int(after_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)) + [0.2])}',
+    ))
     
-    # Calculate speed difference for the map only if both datasets are available
-    if has_before_data and has_after_data:
-        speed_diff = after_data[after_data['hour'] == selected_hour]['average_speed_mph'].values[0] - \
-                    before_data[before_data['hour'] == selected_hour]['average_speed_mph'].values[0]
-    else:
-        # If we don't have both datasets, set speed_diff to 0 (neutral color on map)
-        speed_diff = 0
-        st.warning("Speed difference cannot be calculated - data missing for one of the periods")
-
     # Update layout
     fig.update_layout(
         title=None,
@@ -411,23 +460,24 @@ with col1:
 
 with col2:
     st.subheader("Speed Difference Map")
-    # Hour selection for map with rush hour options
+    # Rush hour selection - use exact strings that match the parquet data
     rush_hours = {
-        "Morning Rush (7AM - 10AM)": 8,  # Using 8AM as representative hour
-        "Evening Rush (4PM - 7PM)": 17,  # Using 5PM as representative hour
+        "Morning Rush": "morning_rush",
+        "Evening Rush": "evening_rush"
     }
-    selected_hour_label = st.selectbox("Select rush hours to view speed difference on map:", 
-                                     list(rush_hours.keys()), 
-                                     index=0)
-    selected_hour = rush_hours[selected_hour_label]
+    selected_rush_hour = st.selectbox("Select rush hour period:", 
+                                    list(rush_hours.keys()), 
+                                    index=0)
     
-    # Create and display the map
-    map_fig = create_map(selected_route, selected_hour, speed_diff)
-    map_fig.update_layout(
-        autosize=True,
-        margin=dict(l=0, r=0, t=0, b=0),
-        height=440  
-    )
+    # Get weekday number for the selected day
+    day_to_num = {
+        "Mondays": 0, "Tuesdays": 1, "Wednesdays": 2, "Thursdays": 3,
+        "Fridays": 4, "Saturdays": 5, "Sundays": 6
+    }
+    selected_weekday = day_to_num[selected_day]
+    
+    # Pass the exact rush hour string value to create_map
+    map_fig = create_map(selected_route, rush_hours[selected_rush_hour], selected_weekday)
     st.plotly_chart(map_fig, use_container_width=True)
 
     # Legend explanation moved inside col2
@@ -452,8 +502,7 @@ and after Jan 5th 2025, respectively.
 The map displays the selected route with color indicating the speed difference between January 2025 (after congestion pricing) 
 and December 2024 (before congestion pricing). Blue indicates faster speeds after congestion pricing, while red indicates slower speeds.
 
-Routes 1-13, excluding 8, are located within or on a direct path to the Congestion Zone. Routes 8, 14, 15, 17 and 19 are routes within
-New York City, but outside of the congestion zone.
+Routes selected are located within or on a direct path to the Congestion Zone, with a focus on those cross the East or Hudson Rivers into Manhattan.
 
 **Note: This is demonstration data only.** When the application is connected to real data, the patterns will reflect actual bus speeds.
 """)
