@@ -36,10 +36,19 @@ The demo uses simulated data. When connected to real data sources, the applicati
 
 
 ## TODO:
+code
 - use r trees to speed up merging of speed and segment?
 - create dict for segment, speed for faster look up
-- fix UI 
 - rearrange aggregation notebook
+- Fix the reversed diff of the map
+
+UI
+- toggle for rush hour
+- color match of the chart and the map
+- Line smoothing
+- color the gap between lines (Seaborn, Altair)
+- dark mode for the map
+
 
 
 
