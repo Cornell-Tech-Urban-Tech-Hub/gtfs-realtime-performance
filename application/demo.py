@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from datetime import datetime, timedelta
 import geopandas as gpd
+import glob
 
 # Page configuration
 st.set_page_config(
@@ -84,91 +85,35 @@ st.markdown(
     "Take a look below to compare bus speed data before and after Congestion Pricing began on January 5th, 2025."
 )
 
-# Create fake route options with route data
+
 route_data = {
     "Route B39: Williamsburg Bridge": {
         "id": "B39",
-        "polyline": [
-            # Holland Tunnel to Midtown path coordinates
-            [40.7273, -74.0094],
-            [40.7266, -74.0037],
-            [40.7262, -73.9986],
-            [40.7282, -73.9945],
-            [40.7332, -73.9902],
-            [40.7380, -73.9862],
-            [40.7427, -73.9818],
-            [40.7473, -73.9774],
-            [40.7518, -73.9730],
-            [40.7565, -73.9687], # Midtown point
-        ],
+        "geojson_file": "data/map-segments/mdb-512_B39_unique_segments.geojson",
         "is_affected": True
     },
     "Route SIM24: Lincoln Tunnel": {
         "id": "SIM24",
-        "polyline": [
-            # Lincoln Tunnel to Midtown path coordinates
-            [40.7588, -74.0106],
-            [40.7593, -74.0053],
-            [40.7598, -74.0002],
-            [40.7602, -73.9954],
-            [40.7606, -73.9906],
-            [40.7613, -73.9851],
-            [40.7618, -73.9800],
-            [40.7624, -73.9749],
-            [40.7629, -73.9699], # Midtown point
-        ],
+        "geojson_file": "data/map-segments/mdb-514_SIM24_unique_segments.geojson",
         "is_affected": True
     },
     "Route SIM4X: Hugh Carey Tunnel": {
         "id": "SIM4X",
-        "polyline": [
-            # Queens Midtown Tunnel to Midtown path coordinates
-            [40.7431, -73.9414],
-            [40.7477, -73.9452],
-            [40.7503, -73.9477],
-            [40.7529, -73.9503],
-            [40.7555, -73.9529],
-            [40.7582, -73.9560],
-            [40.7609, -73.9591],
-            [40.7635, -73.9622], # Midtown point
-        ],
+        "geojson_file": "data/map-segments/mdb-514_SIM4X_unique_segments.geojson",
         "is_affected": True
     },
     "Route M102: CBD North/South": {
         "id": "M102",
-        "polyline": [
-            # Broadway corridor coordinates
-            [40.7048, -74.0123],
-            [40.7119, -74.0095],
-            [40.7190, -74.0067],
-            [40.7261, -74.0038],
-            [40.7333, -74.0008],
-            [40.7404, -73.9980],
-            [40.7476, -73.9951],
-            [40.7547, -73.9923],
-            [40.7618, -73.9895],
-            [40.7690, -73.9866], # Midtown/Uptown
-        ],
+        "geojson_file": "data/map-segments/mdb-513_M102_unique_segments.geojson",
         "is_affected": True
     },
     "Route M50: CBD East/West": {
         "id": "M50",
-        "polyline": [
-            # Using existing coordinates
-            [40.7048, -74.0123],
-            [40.7119, -74.0095],
-            [40.7190, -74.0067],
-            [40.7261, -74.0038],
-            [40.7333, -74.0008],
-            [40.7404, -73.9980],
-            [40.7476, -73.9951],
-            [40.7547, -73.9923],
-            [40.7618, -73.9895],
-            [40.7690, -73.9866], # Midtown/Uptown
-        ],
+        "geojson_file": "data/map-segments/mdb-513_M50_unique_segments.geojson",
         "is_affected": True
     }
 }
+
 
 route_options = list(route_data.keys())
 
@@ -222,35 +167,104 @@ def get_speed_data(route, day):
 def get_segment_speed_diff(route_id, weekday, rush_hour):
     """Get speed differences for route segments"""
     try:
-        # Read merged speed differences data
-        speeds_data = pd.read_parquet("../data/map-speeds/merged_speeds_diff.parquet")
+        # 1. Read Speed Diff Data
+        speed_diff_pattern = f"../data/map-speeds/*_{route_id}_speed_diff.parquet"
+        speed_diff_files = glob.glob(speed_diff_pattern)
         
-        # Filter data for specific route, weekday and rush hour period
-        segments_data = speeds_data[
-            (speeds_data["route_id"] == route_id) & 
-            (speeds_data["weekday"] == weekday) & 
-            (speeds_data["rush_hour"] == rush_hour)
-        ]
-        
-        if segments_data.empty:
+        if not speed_diff_files:
+            st.warning(f"No speed difference data found for route {route_id}")
             return None
             
-        # Read segments geometry
-        segments_geo = gpd.read_file("../data/map-segments/merged_segments.geojson")
+        speed_diff_data = pd.read_parquet(speed_diff_files[0])
         
-        # Merge speed data with geometry
-        merged_data = segments_data.merge(
+        # Filter by weekday and rush hour
+        speed_diff_data = speed_diff_data[
+            (speed_diff_data["weekday"] == weekday) & 
+            (speed_diff_data["rush_hour"] == rush_hour)
+        ]
+        
+        if speed_diff_data.empty:
+            st.warning("No data found for selected weekday and rush hour")
+            return None
+        
+        # 2. Read Segment Geometry Data
+        segment_geo_pattern = f"../data/map-segments/*_{route_id}_unique_segments.geojson"
+        segment_geo_files = glob.glob(segment_geo_pattern)
+        
+        if not segment_geo_files:
+            st.warning(f"No segment geometry data found for route {route_id}")
+            return None
+        
+        # Read the GeoJSON with explicit CRS
+        segments_geo = gpd.read_file(segment_geo_files[0])
+        
+        # Ensure the CRS is set correctly for the source data
+        if segments_geo.crs is None:
+            segments_geo.set_crs(epsg=2263, inplace=True)
+        
+        # Convert to WGS84 (EPSG:4326) for web mapping
+        segments_geo = segments_geo.to_crs('EPSG:4326')
+
+        # 3. Merge speed data with geometry
+        merged_data = speed_diff_data.merge(
             segments_geo,
-            how='left',
+            how='inner',
             left_on=['prev_stop_id', 'stop_id'],
             right_on=['prev_stop_id', 'stop_id']
         )
-        
+
+        if merged_data.empty:
+            st.warning("No matching segments found after merging")
+            return None
+            
+        # Convert to GeoDataFrame to ensure geometry handling is correct
+        merged_data = gpd.GeoDataFrame(merged_data, geometry='geometry', crs='EPSG:4326')
+            
         return merged_data
         
-    except FileNotFoundError:
-        st.warning(f"No segment data available for route {route_id}")
+    except Exception as e:
+        st.error(f"Error loading segment data: {str(e)}")
         return None
+
+def create_color_gradient_legend(max_abs_diff):
+    # Create the same color gradient as used in the map
+    n_steps = 11  # Same number of steps as in map
+    gradient_colors = []
+    
+    # Add red gradient (negative values)
+    for i in range(n_steps // 2):
+        intensity = 2 * i / (n_steps - 1)
+        r = int(255 * (0.6 + 0.4 * (1-intensity)))
+        g = int(99 * intensity)
+        b = int(71 * intensity)
+        gradient_colors.append(f"rgb({r}, {g}, {b})")
+    
+    # Add white for zero
+    gradient_colors.append("rgb(255, 255, 255)")
+    
+    # Add blue gradient (positive values)
+    for i in range(n_steps // 2 + 1, n_steps):
+        intensity = 2 * (i - n_steps // 2) / (n_steps - 1)
+        r = int(135 * (1-intensity))
+        g = int(206 * (1-intensity) + 140 * intensity)
+        b = 255
+        gradient_colors.append(f"rgb({r}, {g}, {b})")
+    
+    # Create CSS gradient string
+    gradient_str = ", ".join([f"{color} {i * 100 / (len(gradient_colors)-1)}%" for i, color in enumerate(gradient_colors)])
+    
+    return f"""
+    <div style="display: flex; align-items: center; justify-content: center; margin: 10px 0;">
+        <div style="display: flex; align-items: center;">
+            <span style="font-size: 12px; margin-right: 8px; min-width: 45px; text-align: right;">{-max_abs_diff:.1f}</span>
+            <div style="width: 200px; height: 15px; 
+                background: linear-gradient(to right, {gradient_str});
+                border: 1px solid #ccc;">
+            </div>
+            <span style="font-size: 12px; margin-left: 8px; min-width: 45px; text-align: left;">+{max_abs_diff:.1f}</span>
+        </div>
+    </div>
+    """
 
 def create_map(route_name, rush_hour, weekday):
     """Create map visualization for route segments"""
@@ -264,75 +278,166 @@ def create_map(route_name, rush_hour, weekday):
     fig = go.Figure()
     
     if segments_data is not None and not segments_data.empty:
+        # Calculate bounds and speed ranges
+        all_lons = []
+        all_lats = []
+        max_abs_diff = max(abs(segments_data['avg_speed_diff'].max()), 
+                          abs(segments_data['avg_speed_diff'].min()))
+        # Round up to nearest whole number for cleaner scale
+        max_abs_diff = np.ceil(max_abs_diff)
+        
         # Add each segment as a separate line
         for _, segment in segments_data.iterrows():
             speed_diff = segment["avg_speed_diff"]
             
-            # Extract coordinates from geometry
-            coords = segment['geometry'].coords[:]
+            # Extract coordinates
+            coords = list(segment['geometry'].coords)
+            lons, lats = zip(*coords)
+            all_lons.extend(lons)
+            all_lats.extend(lats)
             
             # Set color based on speed difference
+            # Normalize the color intensity based on absolute value
+            color_intensity = min(1.0, abs(speed_diff) / max_abs_diff)
+            
             if speed_diff > 0:
-                color_intensity = min(1, speed_diff / 5)
-                color = f'rgb({int(135 * (1-color_intensity))}, {int(206 * (1-color_intensity))}, 255)'
+                # Blue gradient for positive values
+                r = int(135 * (1-color_intensity))
+                g = int(206 * (1-color_intensity) + 140 * color_intensity)
+                b = int(255 * (1-color_intensity) + 255 * color_intensity)
+                color = f'rgb({r}, {g}, {b})'
             else:
-                color_intensity = min(1, abs(speed_diff) / 5)
-                color = f'rgb(255, {int(99 * (1-color_intensity))}, {int(71 * (1-color_intensity))})'
+                # Red gradient for negative values
+                r = int(255 * (0.6 + 0.4 * color_intensity))
+                g = int(99 * (1-color_intensity))
+                b = int(71 * (1-color_intensity))
+                color = f'rgb({r}, {g}, {b})'
             
             # Add segment to map
             fig.add_trace(go.Scattermapbox(
                 mode="lines",
-                lon=[coord[0] for coord in coords],
-                lat=[coord[1] for coord in coords],
-                line=dict(width=6, color=color),
+                lon=lons,
+                lat=lats,
+                line=dict(width=3, color=color),
                 name=f"Stop {segment['prev_stop_id']} to {segment['stop_id']}: {speed_diff:+.1f} mph",
                 showlegend=False,
                 hoverinfo="text",
                 hovertext=f"From Stop: {segment['prev_stop_id']}<br>To Stop: {segment['stop_id']}<br>Speed change: {speed_diff:+.1f} mph"
             ))
         
-        # Add a colorscale legend
+        # Calculate center and zoom
+        center_lat = (max(all_lats) + min(all_lats)) / 2
+        center_lon = (max(all_lons) + min(all_lons)) / 2
+        
+        lat_range = max(all_lats) - min(all_lats)
+        lon_range = max(all_lons) - min(all_lons)
+        lat_range *= 1.2
+        lon_range *= 1.2
+        
+        zoom = min(
+            np.log2(360 / lon_range),
+            np.log2(180 / lat_range)
+        )
+        
+        # Create more detailed colorscale with smooth transitions
+        n_steps = 11  # Number of color steps
+        colorscale = []
+        
+        # Add red gradient (negative values)
+        for i in range(n_steps // 2):
+            pos = i / (n_steps - 1)
+            intensity = 2 * i / (n_steps - 1)  # Scale from 0 to 1 for negative half
+            r = int(255 * (0.6 + 0.4 * (1-intensity)))
+            g = int(99 * intensity)
+            b = int(71 * intensity)
+            colorscale.append([pos, f'rgb({r}, {g}, {b})'])
+        
+        # Add white for zero
+        colorscale.append([0.5, 'rgb(255, 255, 255)'])
+        
+        # Add blue gradient (positive values)
+        for i in range(n_steps // 2 + 1, n_steps):
+            pos = i / (n_steps - 1)
+            intensity = 2 * (i - n_steps // 2) / (n_steps - 1)  # Scale from 0 to 1 for positive half
+            r = int(135 * (1-intensity))
+            g = int(206 * (1-intensity) + 140 * intensity)
+            b = 255
+            colorscale.append([pos, f'rgb({r}, {g}, {b})'])
+        
+        # Add a continuous color scale
         fig.add_trace(go.Scattermapbox(
             mode="markers",
             lon=[],
             lat=[],
             marker=dict(
                 size=10,
-                colorscale=[
-                    [0, 'rgb(255, 71, 71)'],     # Red for negative
-                    [0.5, 'rgb(255, 255, 255)'],  # White for zero
-                    [1, 'rgb(135, 206, 255)']     # Blue for positive
-                ],
+                colorscale=colorscale,
                 colorbar=dict(
-                    title="Speed Difference (mph)",
+                    title=dict(
+                        text="Speed Difference (mph)",
+                        font=dict(size=12)
+                    ),
                     thickness=15,
-                    len=0.5,
-                    x=0.9
+                    len=0.75,  # Make the scale longer
+                    x=0.9,
+                    xpad=10,
+                    tickmode='array',
+                    # Create more tick points for a detailed scale
+                    tickvals=np.linspace(-max_abs_diff, max_abs_diff, 9),
+                    ticktext=[f"{x:+.1f}" for x in np.linspace(-max_abs_diff, max_abs_diff, 9)],
+                    tickfont=dict(size=10),
+                    outlinewidth=0,
+                    ticklabelposition="outside"
                 ),
-                cmin=-5,
-                cmax=5
+                cmin=-max_abs_diff,
+                cmax=max_abs_diff,
+                showscale=True
             ),
             showlegend=False
         ))
         
-    else:
-        st.warning("No segment data available for the selected time period")
-    
-    # Set map layout
-    fig.update_layout(
-        mapbox=dict(
-            style="carto-positron",
-            zoom=12,
-            center=dict(lat=40.75, lon=-73.98),  # NYC center
-        ),
-        margin=dict(l=0, r=0, t=0, b=0),
-        height=440,
-        hoverlabel=dict(
-            bgcolor="white",
-            font_size=12,
-            font_family="Arial"
+        # Set map layout
+        fig.update_layout(
+            mapbox=dict(
+                style="carto-positron",
+                zoom=zoom - 0.5,
+                center=dict(lat=center_lat, lon=center_lon),
+            ),
+            margin=dict(l=0, r=0, t=0, b=0),
+            height=440,
+            hoverlabel=dict(
+                bgcolor="white",
+                font_size=12,
+                font_family="Arial"
+            )
         )
-    )
+
+        # Replace the current legend section with:
+        if segments_data is not None and not segments_data.empty:
+            max_abs_diff = max(abs(segments_data['avg_speed_diff'].max()), 
+                              abs(segments_data['avg_speed_diff'].min()))
+            max_abs_diff = np.ceil(max_abs_diff)  # Round up to nearest whole number
+            st.markdown(
+                create_color_gradient_legend(max_abs_diff),
+                unsafe_allow_html=True
+            )
+    else:
+        # Default view for NYC if no segments
+        fig.update_layout(
+            mapbox=dict(
+                style="carto-positron",
+                zoom=12,
+                center=dict(lat=40.75, lon=-73.98),  # NYC center
+            ),
+            margin=dict(l=0, r=0, t=0, b=0),
+            height=440,
+            hoverlabel=dict(
+                bgcolor="white",
+                font_size=12,
+                font_family="Arial"
+            )
+        )
+        st.warning("No segment data available for the selected time period")
     
     return fig
 
@@ -363,7 +468,7 @@ with col1:
     filter_col1, filter_col2, filter_col3 = st.columns([4, 2, 0.5])
     
     with filter_col1:
-        selected_route = st.selectbox("", route_options, index=0, label_visibility="collapsed")
+        selected_route = st.selectbox("", route_options, index=4, label_visibility="collapsed")
     with filter_col2:
         selected_day = st.selectbox("on", day_options, index=2, label_visibility="collapsed")
     with filter_col3:
@@ -479,20 +584,6 @@ with col2:
     # Pass the exact rush hour string value to create_map
     map_fig = create_map(selected_route, rush_hours[selected_rush_hour], selected_weekday)
     st.plotly_chart(map_fig, use_container_width=True)
-
-    # Legend explanation moved inside col2
-    st.markdown("""
-    <div style="display: flex; justify-content: center; align-items: center; margin-bottom: 20px;">
-        <div style="display: flex; align-items: center; margin-right: 20px;">
-            <div style="width: 20px; height: 20px; background-color: #4682B4; margin-right: 5px;"></div>
-            <span>Faster after congestion pricing</span>
-        </div>
-        <div style="display: flex; align-items: center;">
-            <div style="width: 20px; height: 20px; background-color: #FF6347; margin-right: 5px;"></div>
-            <span>Slower after congestion pricing</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
 
 # Explanatory text
 st.markdown("""

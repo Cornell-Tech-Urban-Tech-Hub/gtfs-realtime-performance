@@ -35,8 +35,11 @@ This application visualizes bus speed data before and after congestion pricing i
 The demo uses simulated data. When connected to real data sources, the application will display actual bus speed patterns.
 
 
-TODO:
-connection of map -> parquet
+## TODO:
+- use r trees to speed up merging of speed and segment?
+- create dict for segment, speed for faster look up
+- fix UI 
+- rearrange aggregation notebook
 
-improvement: one route -> one segment file 
-use r trees to speed up look up
+
+
