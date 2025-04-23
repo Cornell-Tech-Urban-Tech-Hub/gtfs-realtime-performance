@@ -6,6 +6,7 @@ import plotly.express as px
 from datetime import datetime, timedelta
 import geopandas as gpd
 import glob
+import matplotlib.pyplot as plt
 
 # Page configuration
 st.set_page_config(
@@ -226,29 +227,34 @@ def get_segment_speed_diff(route_id, weekday, rush_hour):
         st.error(f"Error loading segment data: {str(e)}")
         return None
 
-def create_color_gradient_legend(max_abs_diff):
-    # Create the same color gradient as used in the map
+def create_color_gradient_legend(max_abs_diff, decrease_color, increase_color):
+    # Create color gradient for legend
     n_steps = 11  # Same number of steps as in map
     gradient_colors = []
     
-    # Add red gradient (negative values)
+    # Convert hex colors to RGB
+    def hex_to_rgb(hex_color):
+        return tuple(int(hex_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+    
+    decrease_rgb = hex_to_rgb(decrease_color)
+    increase_rgb = hex_to_rgb(increase_color)
+    
+    # Add decrease color gradient (orange)
     for i in range(n_steps // 2):
         intensity = 2 * i / (n_steps - 1)
-        r = int(255 * (0.6 + 0.4 * (1-intensity)))
-        g = int(99 * intensity)
-        b = int(71 * intensity)
-        gradient_colors.append(f"rgb({r}, {g}, {b})")
+        alpha = 0.3 + 0.7 * intensity
+        r, g, b = decrease_rgb
+        gradient_colors.append(f"rgba({r}, {g}, {b}, {alpha})")
     
     # Add white for zero
     gradient_colors.append("rgb(255, 255, 255)")
     
-    # Add blue gradient (positive values)
+    # Add increase color gradient (blue)
     for i in range(n_steps // 2 + 1, n_steps):
         intensity = 2 * (i - n_steps // 2) / (n_steps - 1)
-        r = int(135 * (1-intensity))
-        g = int(206 * (1-intensity) + 140 * intensity)
-        b = 255
-        gradient_colors.append(f"rgb({r}, {g}, {b})")
+        alpha = 0.3 + 0.7 * intensity
+        r, g, b = increase_rgb
+        gradient_colors.append(f"rgba({r}, {g}, {b}, {alpha})")
     
     # Create CSS gradient string
     gradient_str = ", ".join([f"{color} {i * 100 / (len(gradient_colors)-1)}%" for i, color in enumerate(gradient_colors)])
@@ -286,9 +292,19 @@ def create_map(route_name, rush_hour, weekday):
         # Round up to nearest whole number for cleaner scale
         max_abs_diff = np.ceil(max_abs_diff)
         
+        # Set colors based on color blind mode
+        if st.session_state.color_blind_mode:
+            decrease_color = '#D55E00'  # Orange-red for color blind
+            increase_color = '#0072B2'  # Blue for color blind
+        else:
+            decrease_color = '#FF6347'  # Tomato red
+            increase_color = '#4169E1'  # Royal blue
+        
         # Add each segment as a separate line
         for _, segment in segments_data.iterrows():
             speed_diff = segment["avg_speed_diff"]
+            # TODO: might change later
+            speed_diff = -speed_diff
             
             # Extract coordinates
             coords = list(segment['geometry'].coords)
@@ -301,17 +317,15 @@ def create_map(route_name, rush_hour, weekday):
             color_intensity = min(1.0, abs(speed_diff) / max_abs_diff)
             
             if speed_diff > 0:
-                # Blue gradient for positive values
-                r = int(135 * (1-color_intensity))
-                g = int(206 * (1-color_intensity) + 140 * color_intensity)
-                b = int(255 * (1-color_intensity) + 255 * color_intensity)
-                color = f'rgb({r}, {g}, {b})'
+                # Increase color with intensity
+                rgb_color = increase_color
+                alpha = 0.3 + 0.7 * color_intensity
+                color = f'rgba{tuple(int(rgb_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)) + (alpha,)}'
             else:
-                # Red gradient for negative values
-                r = int(255 * (0.6 + 0.4 * color_intensity))
-                g = int(99 * (1-color_intensity))
-                b = int(71 * (1-color_intensity))
-                color = f'rgb({r}, {g}, {b})'
+                # Decrease color with intensity
+                rgb_color = decrease_color
+                alpha = 0.3 + 0.7 * color_intensity
+                color = f'rgba{tuple(int(rgb_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)) + (alpha,)}'
             
             # Add segment to map
             fig.add_trace(go.Scattermapbox(
@@ -322,7 +336,7 @@ def create_map(route_name, rush_hour, weekday):
                 name=f"Stop {segment['prev_stop_id']} to {segment['stop_id']}: {speed_diff:+.1f} mph",
                 showlegend=False,
                 hoverinfo="text",
-                hovertext=f"From Stop: {segment['prev_stop_id']}<br>To Stop: {segment['stop_id']}<br>Speed change: {speed_diff:+.1f} mph"
+                hovertext=f"From Stop: {segment['prev_stop_name']}<br>To Stop: {segment['stop_name']}<br>Speed change: {speed_diff:+.1f} mph"
             ))
         
         # Calculate center and zoom
@@ -343,25 +357,29 @@ def create_map(route_name, rush_hour, weekday):
         n_steps = 11  # Number of color steps
         colorscale = []
         
-        # Add red gradient (negative values)
+        # Convert hex colors to RGB
+        decrease_rgb = tuple(int(decrease_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+        increase_rgb = tuple(int(increase_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4))
+        
+        # Add decrease color gradient
         for i in range(n_steps // 2):
             pos = i / (n_steps - 1)
-            intensity = 2 * i / (n_steps - 1)  # Scale from 0 to 1 for negative half
-            r = int(255 * (0.6 + 0.4 * (1-intensity)))
-            g = int(99 * intensity)
-            b = int(71 * intensity)
+            intensity = 2 * i / (n_steps - 1)
+            r = int(decrease_rgb[0] * (0.6 + 0.4 * intensity))
+            g = int(decrease_rgb[1] * (1-intensity))
+            b = int(decrease_rgb[2] * (1-intensity))
             colorscale.append([pos, f'rgb({r}, {g}, {b})'])
         
         # Add white for zero
         colorscale.append([0.5, 'rgb(255, 255, 255)'])
         
-        # Add blue gradient (positive values)
+        # Add increase color gradient
         for i in range(n_steps // 2 + 1, n_steps):
             pos = i / (n_steps - 1)
-            intensity = 2 * (i - n_steps // 2) / (n_steps - 1)  # Scale from 0 to 1 for positive half
-            r = int(135 * (1-intensity))
-            g = int(206 * (1-intensity) + 140 * intensity)
-            b = 255
+            intensity = 2 * (i - n_steps // 2) / (n_steps - 1)
+            r = int(increase_rgb[0] * (1-intensity))
+            g = int(increase_rgb[1] * (0.6 + 0.4 * intensity))
+            b = int(increase_rgb[2] * (1-intensity))
             colorscale.append([pos, f'rgb({r}, {g}, {b})'])
         
         # Add a continuous color scale
@@ -378,11 +396,10 @@ def create_map(route_name, rush_hour, weekday):
                         font=dict(size=12)
                     ),
                     thickness=15,
-                    len=0.75,  # Make the scale longer
+                    len=0.75,
                     x=0.9,
                     xpad=10,
                     tickmode='array',
-                    # Create more tick points for a detailed scale
                     tickvals=np.linspace(-max_abs_diff, max_abs_diff, 9),
                     ticktext=[f"{x:+.1f}" for x in np.linspace(-max_abs_diff, max_abs_diff, 9)],
                     tickfont=dict(size=10),
@@ -399,7 +416,7 @@ def create_map(route_name, rush_hour, weekday):
         # Set map layout
         fig.update_layout(
             mapbox=dict(
-                style="carto-positron",
+                style="carto-darkmatter" if st.session_state.dark_mode else "carto-positron",
                 zoom=zoom - 0.5,
                 center=dict(lat=center_lat, lon=center_lon),
             ),
@@ -418,7 +435,7 @@ def create_map(route_name, rush_hour, weekday):
                               abs(segments_data['avg_speed_diff'].min()))
             max_abs_diff = np.ceil(max_abs_diff)  # Round up to nearest whole number
             st.markdown(
-                create_color_gradient_legend(max_abs_diff),
+                create_color_gradient_legend(max_abs_diff, decrease_color, increase_color),
                 unsafe_allow_html=True
             )
     else:
@@ -477,46 +494,74 @@ with col1:
     # Get data based on selection
     before_data, after_data = get_speed_data(selected_route, selected_day)
     
-    # Calculate speed difference for the map when needed
-    selected_hour = 8  # Assuming morning rush hour
-    speed_diff = after_data[after_data['hour'] == selected_hour]['average_speed_mph'].values[0] - \
-                before_data[before_data['hour'] == selected_hour]['average_speed_mph'].values[0]
-
+    # Create the plot using Plotly
+    fig = go.Figure()
+    
+    # Create a complete set of hours (0-23)
+    all_hours = pd.Series(range(24))
+    
+    # Reindex and interpolate both datasets to ensure they have values at all hours
+    before_interp = before_data.set_index('hour')['average_speed_mph'].reindex(all_hours).interpolate(method='cubic')
+    after_interp = after_data.set_index('hour')['average_speed_mph'].reindex(all_hours).interpolate(method='cubic')
+    
     # Choose colors based on color blind mode
     if st.session_state.color_blind_mode:
-        before_color = "#0072B2"  # Blue that works well for color blind users
-        after_color = "#D55E00"   # Orange-red that works well for color blind users
+        before_color = "#D55E00"   # Orange-red that works well for color blind users
+        after_color = "#0072B2"    # Blue that works well for color blind users
+        before_fill = "rgba(213, 94, 0, 0.2)"    # Light orange fill
+        after_fill = "rgba(0, 114, 178, 0.2)"    # Light blue fill
     else:
-        before_color = "#4169E1"  # Royal Blue
-        after_color = "#FF6347"   # Tomato Red
+        before_color = "#FF8C00"   # Dark orange
+        after_color = "#4169E1"    # Royal blue
+        before_fill = "rgba(255, 140, 0, 0.2)"   # Light orange fill
+        after_fill = "rgba(65, 105, 225, 0.2)"   # Light blue fill
 
     # Choose background based on dark mode
     bg_color = "#121212" if st.session_state.dark_mode else "#FFFFFF"
     text_color = "#FFFFFF" if st.session_state.dark_mode else "#333333"
     grid_color = "rgba(255,255,255,0.1)" if st.session_state.dark_mode else "rgba(0,0,0,0.1)"
-
-    # Create the plot
-    fig = go.Figure()
     
-    # Add traces
+    # Add filled area for before line
     fig.add_trace(go.Scatter(
-        x=before_data['hour'],
-        y=before_data['average_speed_mph'],
+        x=all_hours,
+        y=before_interp,
         mode='lines',
-        name='Before Jan 5th',
-        line=dict(color=before_color, width=3),
+        line=dict(width=0),
         fill='tozeroy',
-        fillcolor=f'rgba{tuple(list(int(before_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)) + [0.2])}',
+        fillcolor=before_fill,
+        showlegend=False,
+        hoverinfo='skip'  # Skip hover info for filled areas
+    ))
+    
+    # Add filled area for after line
+    fig.add_trace(go.Scatter(
+        x=all_hours,
+        y=after_interp,
+        mode='lines',
+        line=dict(width=0),
+        fill='tozeroy',
+        fillcolor=after_fill,
+        showlegend=False,
+        hoverinfo='skip'  # Skip hover info for filled areas
+    ))
+    
+    # Add the lines
+    fig.add_trace(go.Scatter(
+        x=all_hours,
+        y=before_interp,
+        mode='lines',
+        line=dict(color=before_color, width=2, dash='dash'),
+        name='Before Jan 5th',
+        showlegend=True
     ))
     
     fig.add_trace(go.Scatter(
-        x=after_data['hour'],
-        y=after_data['average_speed_mph'],
+        x=all_hours,
+        y=after_interp,
         mode='lines',
+        line=dict(color=after_color, width=2),
         name='Jan 5th and After',
-        line=dict(color=after_color, width=3),
-        fill='tozeroy',
-        fillcolor=f'rgba{tuple(list(int(after_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)) + [0.2])}',
+        showlegend=True
     ))
     
     # Update layout
@@ -525,18 +570,19 @@ with col1:
         xaxis=dict(
             title='Time of Day',
             tickmode='array',
-            tickvals=list(range(24)),  # Changed to show all 24 hours
+            tickvals=list(range(24)),
             ticktext=['12 am', '1 am', '2 am', '3 am', '4 am', '5 am', 
                      '6 am', '7 am', '8 am', '9 am', '10 am', '11 am',
                      '12 pm', '1 pm', '2 pm', '3 pm', '4 pm', '5 pm', 
-                     '6 pm', '7 pm', '8 pm', '9 pm', '10 pm', '11 pm'],  # Added all hours
+                     '6 pm', '7 pm', '8 pm', '9 pm', '10 pm', '11 pm'],
             gridcolor=grid_color,
             color=text_color,
             title_font_color=text_color,
             tickfont_color=text_color,
         ),
         yaxis=dict(
-            title='Average Bus Speed (mph)',
+            title_text='Average Bus Speed (mph)',
+            title_standoff=10,
             gridcolor=grid_color,
             color=text_color,
             title_font_color=text_color,
@@ -560,7 +606,7 @@ with col1:
         autosize=True,
     )
     
-    # Display the chart
+    # Display the plot in Streamlit
     st.plotly_chart(fig, use_container_width=True)
 
 with col2:
