@@ -345,13 +345,16 @@ def create_map(route_name, rush_hour, weekday):
         
         lat_range = max(all_lats) - min(all_lats)
         lon_range = max(all_lons) - min(all_lons)
-        lat_range *= 1.2
-        lon_range *= 1.2
         
+        # Use smaller multipliers to zoom in more and show all segments clearly
+        lat_range *= 1.05
+        lon_range *= 1.05
+        
+        # Calculate zoom level with a slight increase to zoom in more
         zoom = min(
             np.log2(360 / lon_range),
             np.log2(180 / lat_range)
-        )
+        ) + 0.5  # Add 0.5 to zoom in more
         
         # Create more detailed colorscale with smooth transitions
         n_steps = 11  # Number of color steps
@@ -421,11 +424,20 @@ def create_map(route_name, rush_hour, weekday):
                 center=dict(lat=center_lat, lon=center_lon),
             ),
             margin=dict(l=0, r=0, t=0, b=0),
-            height=440,
+            height=375,
             hoverlabel=dict(
                 bgcolor="white",
                 font_size=12,
                 font_family="Arial"
+            ),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="center",
+                x=0.5,
+                bgcolor="rgba(0,0,0,0)" if st.session_state.dark_mode else "rgba(255,255,255,0)",
+                font=dict(color=text_color)
             )
         )
 
@@ -452,34 +464,45 @@ def create_map(route_name, rush_hour, weekday):
                 bgcolor="white",
                 font_size=12,
                 font_family="Arial"
+            ),
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="center",
+                x=0.5,
+                bgcolor="rgba(0,0,0,0)" if st.session_state.dark_mode else "rgba(255,255,255,0)",
+                font=dict(color=text_color)
             )
         )
-        st.warning("No segment data available for the selected time period")
+        print("No segment data available for the selected time period")
     
     return fig
+
+
+
+# Add Accessibility options here
+access_col1, access_col2, access_col3 = st.columns([1, 1, 2])
+with access_col1:
+    color_blind_mode = st.button(
+        "Color Blind Mode: " + ("ON" if st.session_state.color_blind_mode else "OFF"),
+        on_click=toggle_color_blind_mode
+    )
+with access_col2:
+    dark_mode = st.button(
+        "Dark Mode: " + ("ON" if st.session_state.dark_mode else "OFF"),
+        on_click=toggle_dark_mode
+    )
+with access_col3:
+    # Empty column for spacing
+    pass
 
 # Display the chart and map side by side with 2:1 ratio
 col1, col2 = st.columns([2, 1])
 
-with col1:
+with col1:   
     # Add the subheader to the chart column
     st.subheader("Hourly Bus Speed for")
-    
-    # Add Accessibility options here
-    access_col1, access_col2, access_col3 = st.columns([1, 1, 2])
-    with access_col1:
-        color_blind_mode = st.button(
-            "Color Blind Mode: " + ("ON" if st.session_state.color_blind_mode else "OFF"),
-            on_click=toggle_color_blind_mode
-        )
-    with access_col2:
-        dark_mode = st.button(
-            "Dark Mode: " + ("ON" if st.session_state.dark_mode else "OFF"),
-            on_click=toggle_dark_mode
-        )
-    with access_col3:
-        # Empty column for spacing
-        pass
     
     # Create two columns for the route and day selection
     filter_col1, filter_col2, filter_col3 = st.columns([4, 2, 0.5])
@@ -493,6 +516,10 @@ with col1:
     
     # Get data based on selection
     before_data, after_data = get_speed_data(selected_route, selected_day)
+
+    # Check if data is available
+    if before_data.empty and after_data.empty:
+        st.warning(f"No data found for {selected_route} on {selected_day}")
     
     # Create the plot using Plotly
     fig = go.Figure()
@@ -501,8 +528,8 @@ with col1:
     all_hours = pd.Series(range(24))
     
     # Reindex and interpolate both datasets to ensure they have values at all hours
-    before_interp = before_data.set_index('hour')['average_speed_mph'].reindex(all_hours).interpolate(method='cubic')
-    after_interp = after_data.set_index('hour')['average_speed_mph'].reindex(all_hours).interpolate(method='cubic')
+    before_interp = before_data.set_index('hour')['average_speed_mph'].reindex(all_hours).interpolate(method='linear')
+    after_interp = after_data.set_index('hour')['average_speed_mph'].reindex(all_hours).interpolate(method='linear')
     
     # Choose colors based on color blind mode
     if st.session_state.color_blind_mode:
@@ -550,7 +577,13 @@ with col1:
         x=all_hours,
         y=before_interp,
         mode='lines',
-        line=dict(color=before_color, width=2, dash='dash'),
+        line=dict(
+            color=before_color, 
+            width=2, 
+            dash='dash',
+            shape='spline',# This creates a smoothed curve
+            smoothing=0.3 # Adjust smoothing factor (0.5-1.5 range works well)
+        ),   
         name='Before Jan 5th',
         showlegend=True
     ))
@@ -559,7 +592,12 @@ with col1:
         x=all_hours,
         y=after_interp,
         mode='lines',
-        line=dict(color=after_color, width=2),
+        line=dict(
+            color=after_color, 
+            width=2,
+            shape='spline',# This creates a smoothed curve
+            smoothing=0.3 # Adjust smoothing factor (0.5-1.5 range works well)
+        ),
         name='Jan 5th and After',
         showlegend=True
     ))
@@ -595,13 +633,13 @@ with col1:
         legend=dict(
             orientation="h",
             yanchor="bottom",
-            y=-0.2,
+            y=1.02,
             xanchor="center",
             x=0.5,
             bgcolor="rgba(0,0,0,0)" if st.session_state.dark_mode else "rgba(255,255,255,0)",
             font=dict(color=text_color)
         ),
-        margin=dict(l=50, r=20, t=30, b=50),
+        margin=dict(l=50, r=20, t=50, b=50),  # Increased top margin to accommodate legend
         height=500,
         autosize=True,
     )
