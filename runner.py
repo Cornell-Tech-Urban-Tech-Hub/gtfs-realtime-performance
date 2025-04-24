@@ -1,4 +1,11 @@
-# runner.py
+"""
+This is the main processing script that calculates bus speeds using GTFS (General Transit Feed Specification) data. 
+For each period, it:
+1. Downloads the appropriate GTFS feed
+2. Processes the selected routes
+3. Calculates bus speeds
+4. Stores the results
+"""
 import argparse
 from datetime import datetime, timedelta
 from src.speed_calculator import SpeedCalculator
