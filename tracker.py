@@ -81,7 +81,7 @@ else:
 # App title and description
 st.title("NYC Bus Speed Tracker")
 st.markdown("""
-    Curious whether [Congestion Pricing](https://www.mta.info/project/CBDTP) is having an impact on bus speeds in NYC?  
+    Curious whether [Central Business District Tolling Program](https://www.mta.info/project/CBDTP) (CBDTP), or **Congestion Pricing**, is having an impact on bus speeds in NYC?  
     Take a look below to compare bus speed data before and after Congestion Pricing began on **January 5th, 2025**, powered by MTA's realtime bus travel data.
 """)
 
@@ -261,12 +261,16 @@ def create_color_gradient_legend(max_abs_diff, decrease_color, increase_color):
     return f"""
     <div style="display: flex; align-items: center; justify-content: center; margin: 10px 0;">
         <div style="display: flex; align-items: center;">
-            <span style="font-size: 12px; margin-right: 8px; min-width: 45px; text-align: right;">{-max_abs_diff:.1f}</span>
-            <div style="width: 200px; height: 15px; 
+            <div style="text-align: right; min-width: 60px;">
+                <span style="font-size: 12px;">{-max_abs_diff:.1f} mph</span>
+            </div>
+            <div style="width: 200px; height: 15px; margin: 0 8px;
                 background: linear-gradient(to right, {gradient_str});
                 border: 1px solid #ccc;">
             </div>
-            <span style="font-size: 12px; margin-left: 8px; min-width: 45px; text-align: left;">+{max_abs_diff:.1f}</span>
+            <div style="text-align: left; min-width: 60px;">
+                <span style="font-size: 12px;">+{max_abs_diff:.1f} mph</span>
+            </div>
         </div>
     </div>
     """
@@ -503,14 +507,12 @@ with col1:
     st.subheader("Hourly Bus Speed for")
     
     # Create two columns for the route and day selection
-    filter_col1, filter_col2, filter_col3 = st.columns([4, 2, 0.5])
+    filter_col1, filter_col2 = st.columns([4, 2])
     
     with filter_col1:
         selected_route = st.selectbox("", route_options, index=4, label_visibility="collapsed")
     with filter_col2:
         selected_day = st.selectbox("on", day_options, index=2, label_visibility="collapsed")
-    with filter_col3:
-        refresh = st.button("🔄", help="Refresh data")
     
     # Get data based on selection
     before_data, after_data = get_speed_data(selected_route, selected_day)
@@ -528,7 +530,7 @@ with col1:
     # Reindex and interpolate both datasets to ensure they have values at all hours
     before_interp = before_data.set_index('hour')['average_speed_mph'].reindex(all_hours).interpolate(method='linear')
     after_interp = after_data.set_index('hour')['average_speed_mph'].reindex(all_hours).interpolate(method='linear')
-    
+
     # Choose colors based on color blind mode
     if st.session_state.color_blind_mode:
         before_color = "#D55E00"   # Orange-red that works well for color blind users
@@ -555,6 +557,7 @@ with col1:
         line=dict(width=0),
         fill='tozeroy',
         fillcolor=before_fill,
+        name='',
         showlegend=False,
         hoverinfo='skip'  # Skip hover info for filled areas
     ))
@@ -567,6 +570,7 @@ with col1:
         line=dict(width=0),
         fill='tozeroy',
         fillcolor=after_fill,
+        name='',
         showlegend=False,
         hoverinfo='skip'  # Skip hover info for filled areas
     ))
@@ -603,7 +607,7 @@ with col1:
     
     # Update layout
     fig.update_layout(
-        title=None,
+        title="",
         xaxis=dict(
             title='Time of Day',
             tickmode='array',
@@ -671,13 +675,12 @@ with col2:
 
 # Explanatory text
 st.markdown("""
-The chart above shows bus speeds for a chosen route and day of week. The red and blue lines calculate average bus speeds prior to,
-and after Jan 5th 2025, respectively.           
+The chart above shows bus speeds for a chosen route and day of week. The red and blue lines calculate average hourly bus speeds before and after Congestion Pricing, respectively.                   
 
-The map displays the selected route with color indicating the speed difference between January 2025 (after congestion pricing) 
-and December 2024 (before congestion pricing) by segment. Blue indicates faster speeds after congestion pricing, while red indicates slower speeds.
+The map displays the selected route with color indicating the speed difference between January 2025 (after Congestion Pricing) 
+and December 2024 (before Congestion Pricing) by segment. Blue indicates faster speeds after Congestion Pricing, while red indicates slower speeds.
 
-Routes selected are located within or on a direct path to the Congestion Zone, with a focus on those cross the East or Hudson Rivers into Manhattan.
+Routes selected are located within or on a direct path to the [Congestion Relief Zone](https://congestionreliefzone.mta.info/), with a focus on those cross the East or Hudson Rivers into Manhattan.
 
 Dates selected provide a month of data before and after the January 5th implementation date for comparison. Specifically:
 - Before congestion pricing: December 3, 2024 - January 4, 2025
