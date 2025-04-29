@@ -148,8 +148,8 @@ def get_speed_data(route, day):
     route_id = route_data[route]["id"]
     
     # Read both control and treatment speeds data
-    before_data = pd.read_parquet("../data/chart-speeds/control_speeds.parquet")
-    after_data = pd.read_parquet("../data/chart-speeds/treatment_speeds.parquet")
+    before_data = pd.read_parquet("data/chart-speeds/control_speeds.parquet")
+    after_data = pd.read_parquet("data/chart-speeds/treatment_speeds.parquet")
     
     # Filter data for specific route and weekday
     before_data = before_data[
@@ -168,7 +168,7 @@ def get_segment_speed_diff(route_id, weekday, rush_hour):
     """Get speed differences for route segments"""
     try:
         # 1. Read Speed Diff Data
-        speed_diff_pattern = f"../data/map-speeds/*_{route_id}_speed_diff.parquet"
+        speed_diff_pattern = f"data/map-speeds/*_{route_id}_speed_diff.parquet"
         speed_diff_files = glob.glob(speed_diff_pattern)
         
         if not speed_diff_files:
@@ -188,7 +188,7 @@ def get_segment_speed_diff(route_id, weekday, rush_hour):
             return None
         
         # 2. Read Segment Geometry Data
-        segment_geo_pattern = f"../data/map-segments/*_{route_id}_unique_segments.geojson"
+        segment_geo_pattern = f"data/map-segments/*_{route_id}_unique_segments.geojson"
         segment_geo_files = glob.glob(segment_geo_pattern)
         
         if not segment_geo_files:

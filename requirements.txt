@@ -1,18 +1,15 @@
-# Core data processing libraries
-pandas
-geopandas
-pytz
-requests
-shapely
-tqdm
-s3fs
-numpy
-boto3
-python-dotenv
+boto3==1.37.1
+contextily==1.6.2
+fastparquet==2024.11.0
+geopandas==1.0.1
+ipykernel==6.29.5
+kagglehub==0.3.6
+numpy==2.2.5
+pandas==2.2.3
+plotly==6.0.1
+plotnine==0.14.5
+pyarrow==20.0.0
+python-dotenv==1.1.0
+streamlit==1.44.1
+tqdm==4.67.1
 
-# For geometry error handling
-rtree
-pyarrow
-
-# For streamlit app 
-plotly

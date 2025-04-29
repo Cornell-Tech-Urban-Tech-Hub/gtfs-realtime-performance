@@ -91,3 +91,6 @@ target/
 
 # logs
 logs/
+
+venv/
+.venv/
