@@ -58,3 +58,14 @@ This application visualizes bus speed data before and after congestion pricing i
      - `../data/map-speeds/`
    - Files follow the pattern: `*_{route_id}_speed_diff.parquet`
    - Contains speed difference data between before and after congestion pricing periods. Negative speed difference shows that speed decreased after congestion pricing implementation.
+
+
+
+
+16K    data//chart-speeds
+64K    data//map-speeds
+224B   data//map-segments
+
+
+150M    data//raw-speeds
+237M    data/
