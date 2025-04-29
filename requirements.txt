@@ -1,3 +1,4 @@
+# Core data processing libraries
 pandas>=2.0.0
 geopandas>=0.13.0
 pytz>=2023.3
@@ -11,5 +12,8 @@ python-dotenv>=1.0.0
 
 # For geometry error handling
 rtree>=1.0.1
-
 pyarrow>=14.0.1
+
+# For streamlit app 
+streamlit>=1.31.0
+plotly>=5.18.0
