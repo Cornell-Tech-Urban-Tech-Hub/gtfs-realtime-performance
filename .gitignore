@@ -75,8 +75,9 @@ target/
 # Jupyter NB Checkpoints
 .ipynb_checkpoints/
 
-# exclude data from source control by default
-/data/
+# Exclude data folders from source control
+/data/raw-speeds
+/data/map-segments-merged
 
 # Mac OS-specific storage files
 .DS_Store
