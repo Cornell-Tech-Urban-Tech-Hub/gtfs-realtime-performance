@@ -6,7 +6,6 @@ import plotly.express as px
 from datetime import datetime, timedelta
 import geopandas as gpd
 import glob
-import matplotlib.pyplot as plt
 
 # Page configuration
 st.set_page_config(
