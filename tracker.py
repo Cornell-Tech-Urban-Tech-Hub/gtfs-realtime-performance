@@ -690,10 +690,12 @@ Dates selected provide a month of data before and after the January 5th implemen
 
 # Add a footer
 st.markdown("---")
-st.markdown("© 2025 NYC Bus Speed Tracker | [Urban Tech Hub](https://urban.tech.cornell.edu/)")
+st.markdown("© 2025 NYC Bus Speed Tracker | Urban Tech Hub")
 st.markdown("""
 This project is run by **[Huaiying Luo](https://www.linkedin.com/in/huaiying-luo/)**, under the supervision of **Dr. Anthony Townsend**
-@ Urban Tech Hub, Cornell Tech.
+@ [Urban Tech Hub](https://urban.tech.cornell.edu/), Cornell Tech.
+
+For more information, visit the project's repository: [nyc-bus-speed-tracker](https://github.com/Cornell-Tech-Urban-Tech-Hub/nyc-bus-speed-tracker)
 
 Questions or comments can be directed to hl2446@cornell.edu or amt353@cornell.edu.
 
