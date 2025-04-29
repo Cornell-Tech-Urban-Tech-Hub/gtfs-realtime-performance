@@ -319,12 +319,13 @@ def create_map(route_name, rush_hour, weekday):
                 # Increase color with intensity
                 rgb_color = increase_color
                 alpha = 0.3 + 0.7 * color_intensity
-                color = f'rgba{tuple(int(rgb_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)) + (alpha,)}'
+                color = f'rgba{tuple(list(int(rgb_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)) + [float(alpha)])}'
+
             else:
                 # Decrease color with intensity
                 rgb_color = decrease_color
                 alpha = 0.3 + 0.7 * color_intensity
-                color = f'rgba{tuple(int(rgb_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)) + (alpha,)}'
+                color = f'rgba{tuple(list(int(rgb_color.lstrip("#")[i:i+2], 16) for i in (0, 2, 4)) + [float(alpha)])}'
             
             # Add segment to map
             fig.add_trace(go.Scattermapbox(
@@ -346,14 +347,14 @@ def create_map(route_name, rush_hour, weekday):
         lon_range = max(all_lons) - min(all_lons)
         
         # Use smaller multipliers to zoom in more and show all segments clearly
-        lat_range *= 1.05
-        lon_range *= 1.05
+        lat_range *= 1.02  # Reduced from 1.05 to zoom in more
+        lon_range *= 1.02  # Reduced from 1.05 to zoom in more
         
-        # Calculate zoom level with a slight increase to zoom in more
+        # Calculate zoom level with a larger increase to zoom in more
         zoom = min(
             np.log2(360 / lon_range),
             np.log2(180 / lat_range)
-        ) + 0.5  # Add 0.5 to zoom in more
+        ) + 1.0  # Increased from 0.5 to 1.0 to zoom in more
         
         # Create more detailed colorscale with smooth transitions
         n_steps = 11  # Number of color steps
