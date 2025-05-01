@@ -34,7 +34,7 @@ The archived GTFS realtime data are retrieved from the Data Clinic AWS S3 bucket
 To learn more about the structure of GTFS Transit feed, please visit the [General Transit Feed Specification (GTFS) documentation](https://gtfs.org/documentation/overview/).
 
 ### Data Workflow 
-1. Data Collection: First step is to fetch daily bus vehicle data from S3 bucket, using the speed calculator to transform it into daily bus speed data.
+1. Data Retrival: First step is to fetch daily bus vehicle data from S3 bucket, using the speed calculator to transform it into daily bus speed data.
     - Exploration: **[`speed_tracker_data.ipynb`](notebooks/speed_tracker_data.ipynb)**
     - Implementation: **[`runner.py`](runner.py)**
 2. Data Aggregation: Second step is to aggregate and transform raw speed data based on the requirements of visualization.
@@ -204,8 +204,27 @@ Migrate daily archived data from *s3://busobservatory-lake* to *s3://dataclinic-
 Implement batch parallel processing by setting up Spark jobs for selected dates and routes.
 
 ### Realtime Ingestion
-For this project, static aggregated data is used, specifically:
+
+For this project, static aggregated data is used for two distinct periods:
+
 - Before Congestion Pricing: December 3, 2024 - January 4, 2025
 - After Congestion Pricing: January 5, 2025 - February 6, 2025
 
-For future development, set up weekly ETL jobs for processing new daily data coming into the data lake, and update **After Congestion Pricing** metrics on a weekly basis (since we are using a weekly aggregation).
+To enhance this implementation, we recommend establishing weekly ETL jobs that process new daily data flowing into the data lake. This will allow us to update the After Congestion Pricing metrics on a weekly basis, aligning with our weekly aggregation approach.
+
+### Scalable Data Ingestion Architecture
+
+Our long-term goal is to expand this project from static snapshots to automated data ingestion and, ultimately, updated data visualization. To enable this end-to-end automation (start point - data lake, endpoint - web application), here are some high-level data architecture design ideas that you can use as a reference.
+
+1. **Unified Processing Module**
+   Consolidate data retrieval and aggregation into a single runner file. Current aggregation processes rely on Jupyter notebooks, which should be modularized into the data retrieval framework for a more streamlined and maintainable solution.
+
+2. **Parallel Processing Implementation**
+   Deploy Spark jobs for parallel processing across multiple dimensions (date, route, etc.), implement comprehensive testing protocols, and containerize the solution using Docker, building upon existing Docker infrastructure to ensure consistency and scalability.
+
+3. **Environment Migration**
+   Migrate all jobs from local to cloud environment (same cloud provider as your data storage). Co-locating processing with storage eliminates data I/O bottlenecks, significantly improving processing speed and overall performance.
+
+4. **Automation with Triggers**
+   Implement cloud-native triggers (e.g., AWS EventBridge) to execute processing at predetermined intervals. A weekly processing cadence is recommended to align with the project's weekly data aggregation methodology, ensuring timely updates with minimal manual intervention.
+
